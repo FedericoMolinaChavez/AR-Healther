@@ -1,10 +1,12 @@
 package com.example.healtherar;
 
+import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.graphics.Bitmap;
 import android.graphics.ImageFormat;
 import android.media.Image;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.HandlerThread;
 import android.util.Log;
@@ -31,8 +33,10 @@ import com.google.ar.sceneform.math.Quaternion;
 import com.google.ar.sceneform.math.Vector3;
 import com.google.ar.sceneform.rendering.ViewRenderable;
 import com.google.ar.sceneform.ux.ArFragment;
+import android.os.Handler;
 
 import java.nio.ByteBuffer;
+
 
 
 public class Augmented_Faces extends AppCompatActivity {
@@ -40,6 +44,7 @@ public class Augmented_Faces extends AppCompatActivity {
     private Node node;
     private Session arSession;
     private ViewRenderable modelFuture;
+    @RequiresApi(api = Build.VERSION_CODES.O)
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -48,6 +53,15 @@ public class Augmented_Faces extends AppCompatActivity {
         fragment = (ArFragment) getSupportFragmentManager().findFragmentById(R.id.ux_fragment);
 
         fragment.getArSceneView().getScene().addOnUpdateListener(this::onSceneUpdate) ;
+        Handler handler = new Handler();
+        int delay = 1000;
+        handler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                takePhoto();
+                handler.postDelayed(this, delay);
+            }
+        },delay);
 
 
 
@@ -58,6 +72,7 @@ public class Augmented_Faces extends AppCompatActivity {
 
 
 
+    @RequiresApi(api = Build.VERSION_CODES.O)
     private void onSceneUpdate(FrameTime frameTime) {
         fragment.onUpdate(frameTime);
         // If there is no frame then don't process anything.
@@ -70,7 +85,7 @@ public class Augmented_Faces extends AppCompatActivity {
         if (this.fragment.getArSceneView().getArFrame().getCamera().getTrackingState() != TrackingState.TRACKING) {
             return;
         }
-        takePhoto();
+
 
             ViewRenderable.builder()
                     .setView(this, R.layout.menupatient)
@@ -109,6 +124,7 @@ public class Augmented_Faces extends AppCompatActivity {
 
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.O)
     private Bitmap takePhoto() {
         final Bitmap newBitmap;
         Frame frame = fragment.getArSceneView().getArFrame();
@@ -123,6 +139,11 @@ public class Augmented_Faces extends AppCompatActivity {
               newBitmap = Bitmap.createBitmap(image.getWidth(), image.getHeight(), Bitmap.Config.ALPHA_8);
             newBitmap.copyPixelsFromBuffer(image.getPlanes()[0].getBuffer());
             Log.i("IMG", newBitmap.toString());
+
+                    PhotoSender sender = new PhotoSender(newBitmap,"http://192.168.43.235/fatialRecog/testImage",getApplicationContext());
+                    sender.sendImage();
+
+
         } catch (NotYetAvailableException e) {
             e.printStackTrace();
         }
