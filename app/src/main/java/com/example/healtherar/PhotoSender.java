@@ -1,10 +1,8 @@
 package com.example.healtherar;
 
 import android.content.Context;
-import android.graphics.Bitmap;
 import android.os.Build;
 import android.util.Log;
-import android.widget.Toast;
 
 import androidx.annotation.RequiresApi;
 
@@ -22,22 +20,24 @@ import java.io.ByteArrayOutputStream;
 import java.util.Base64;
 
 public class PhotoSender {
-    private Bitmap imageToSend;
+    private byte[] imageToSend;
     private String url;
+    private final String[] ans;
     private RequestQueue mRequestQueue;
     protected Context ctx;
-    public PhotoSender(Bitmap x , String i, Context ctx){
+    public PhotoSender(byte[] x , String i, Context ctx){
         this.imageToSend = x;
         this.url = i;
         this.ctx = ctx;
+        ans = new String[1];
     }
     @RequiresApi(api = Build.VERSION_CODES.O)
     public void sendImage(){
         mRequestQueue = Volley.newRequestQueue(this.ctx);
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
 
-        this.imageToSend.compress(Bitmap.CompressFormat.PNG, 100, byteArrayOutputStream);
-        String encodedImgae =  Base64.getEncoder().encodeToString(byteArrayOutputStream.toByteArray());
+
+        String encodedImgae =  Base64.getEncoder().encodeToString(this.imageToSend);
         Log.i("IMGSEND", String.valueOf(byteArrayOutputStream.size()));
         JSONObject jsonObject = new JSONObject();
         try{
@@ -50,7 +50,14 @@ public class PhotoSender {
         JsonObjectRequest jsonObjectRequest = new JsonObjectRequest(Request.Method.POST, this.url, jsonObject, new Response.Listener<JSONObject>() {
             @Override
             public void onResponse(JSONObject response) {
-                Log.e("aaaa", jsonObject.toString());
+                Log.i("aaaa", response.toString());
+                try {
+                    ans[0] = (String) response.get("UserToken");
+
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+
             }
         }, new Response.ErrorListener(){
             @Override
@@ -60,5 +67,8 @@ public class PhotoSender {
             }
         });
         mRequestQueue.add(jsonObjectRequest);
+    }
+    public String getAsn(){
+        return (this.ans[0]);
     }
 }

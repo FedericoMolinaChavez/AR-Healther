@@ -49,9 +49,10 @@ public class UserLogin implements Serializable {
                Log.i("Error", response.toString());
                try {
                    y[0] = new JSONObject(response.toString());
-                    y[0] = new JSONObject(y[0].getString("user"));
+                    String res = y[0].getString("token");
                     if(y[0] != null){
                         Intent goTo = new Intent(ctx, Augmented_Faces.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                        goTo.putExtra("User", res);
                         ctx.startActivity(goTo);
                     }
                } catch (JSONException e) {

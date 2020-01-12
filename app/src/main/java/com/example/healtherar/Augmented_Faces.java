@@ -3,14 +3,18 @@ package com.example.healtherar;
 import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.ImageFormat;
+import android.graphics.Rect;
+import android.graphics.YuvImage;
 import android.media.Image;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.HandlerThread;
 import android.util.Log;
 import android.view.PixelCopy;
+import android.view.View;
 import android.widget.TextView;
 
 import com.google.ar.core.Anchor;
@@ -35,6 +39,7 @@ import com.google.ar.sceneform.rendering.ViewRenderable;
 import com.google.ar.sceneform.ux.ArFragment;
 import android.os.Handler;
 
+import java.io.ByteArrayOutputStream;
 import java.nio.ByteBuffer;
 
 
@@ -44,17 +49,24 @@ public class Augmented_Faces extends AppCompatActivity {
     private Node node;
     private Session arSession;
     private ViewRenderable modelFuture;
+    private String easyPuzzle;
+    private Consultor checkProfile;
     @RequiresApi(api = Build.VERSION_CODES.O)
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        Intent intent = getIntent();
+        this.easyPuzzle = intent.getExtras().getString("User");
+        Log.i("INFORMATION", easyPuzzle);
+        checkProfile = new Consultor(easyPuzzle,getApplicationContext());
+        checkProfile.sendRequest("federicomolinachavez@gmail.com");
         setContentView(R.layout.activity_augmented__faces);
         final ViewRenderable[] modelFuture = {null};
         fragment = (ArFragment) getSupportFragmentManager().findFragmentById(R.id.ux_fragment);
 
         fragment.getArSceneView().getScene().addOnUpdateListener(this::onSceneUpdate) ;
         Handler handler = new Handler();
-        int delay = 1000;
+        int delay = 2000;
         handler.postDelayed(new Runnable() {
             @Override
             public void run() {
@@ -92,6 +104,14 @@ public class Augmented_Faces extends AppCompatActivity {
                     .build()
                     .thenAccept(renderable -> {
                         this.modelFuture = renderable;
+                        if(checkProfile.getY()[0] != null){
+                            TextView testView = this.modelFuture.getView().findViewById(R.id.TextViewMain);
+                            testView.setText(checkProfile.getY()[0].toString());
+                        }
+
+                        //TextView testView = (TextView) findViewById(R.id.TextViewMain);
+                       // testView.setText("other text");
+
                         if(this.node == null){
                             Vector3 cameraPos = this.fragment.getArSceneView().getScene().getCamera().getWorldPosition();
                             Vector3 cameraForward = this.fragment.getArSceneView().getScene().getCamera().getForward();
@@ -105,6 +125,7 @@ public class Augmented_Faces extends AppCompatActivity {
                             this.node.setRenderable(this.modelFuture);
                         }
 
+
                             /*this.node = new Node();
                             this.node.setParent(this.fragment.getArSceneView().getScene());
                             this.node.setRenderable(this.modelFuture);
@@ -116,6 +137,8 @@ public class Augmented_Faces extends AppCompatActivity {
                             this.node.setLocalPosition(newPosition);*/
 
                     });
+
+
 
 
 
@@ -136,17 +159,48 @@ public class Augmented_Faces extends AppCompatActivity {
                 throw new IllegalArgumentException("Expected image in YUV_420_888 formate, got format" + image.getFormat());
             }
            // ByteBuffer processedImageBytesGrayScale =
-              newBitmap = Bitmap.createBitmap(image.getWidth(), image.getHeight(), Bitmap.Config.ALPHA_8);
-            newBitmap.copyPixelsFromBuffer(image.getPlanes()[0].getBuffer());
-            Log.i("IMG", newBitmap.toString());
+            byte[] data = null;
+            data = NV21toJPEG(YUV_420_888toNV21(image),
+                    image.getWidth(), image.getHeight());
 
-                    PhotoSender sender = new PhotoSender(newBitmap,"http://192.168.43.235/fatialRecog/testImage",getApplicationContext());
-                    sender.sendImage();
+            PhotoSender sender = new PhotoSender(data,"http://192.168.1.4/fatialRecog/consultImage2",getApplicationContext());
+            sender.sendImage();
+            String userToken = sender.getAsn();
+            if(userToken != null){
+                Log.i("IMAGERESPONSE", userToken);
+                checkProfile.sendRequest(userToken);
+            }
+
 
 
         } catch (NotYetAvailableException e) {
             e.printStackTrace();
         }
         return null;
+    }
+    private static byte[] NV21toJPEG(byte[] nv21, int width, int height) {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        YuvImage yuv = new YuvImage(nv21, ImageFormat.NV21, width, height, null);
+        yuv.compressToJpeg(new Rect(0, 0, width, height), 100, out);
+        return out.toByteArray();
+    }
+    private static byte[] YUV_420_888toNV21(Image image) {
+        byte[] nv21;
+        ByteBuffer yBuffer = image.getPlanes()[0].getBuffer();
+        ByteBuffer uBuffer = image.getPlanes()[1].getBuffer();
+        ByteBuffer vBuffer = image.getPlanes()[2].getBuffer();
+
+        int ySize = yBuffer.remaining();
+        int uSize = uBuffer.remaining();
+        int vSize = vBuffer.remaining();
+
+        nv21 = new byte[ySize + uSize + vSize];
+
+        //U and V are swapped
+        yBuffer.get(nv21, 0, ySize);
+        vBuffer.get(nv21, ySize, vSize);
+        uBuffer.get(nv21, ySize + vSize, uSize);
+
+        return nv21;
     }
 }
